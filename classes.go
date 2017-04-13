@@ -5,21 +5,21 @@ import "errors"
 
 type Figure interface {
 	Draw(int, int, int, int)
-	Intersect(int,int) Figure
+	Intersect(int, int) Figure
 	Remove(int, int) error
 }
 
 type point struct {
-	x int
-	y int
+	x   int
+	y   int
 	sym rune
 }
 
-func NewPoint (x int, y int, sym rune) *point {
-	p:=new(point)
-	p.x=x
-	p.y=y
-	p.sym=sym
+func NewPoint(x int, y int, sym rune) *point {
+	p := new(point)
+	p.x = x
+	p.y = y
+	p.sym = sym
 	return p
 }
 
@@ -36,14 +36,14 @@ func (p *point) Intersect(x int, y int) Figure {
 	return nil
 
 }
-func (p *point) Remove (x int, y int) error {
+func (p *point) Remove(x int, y int) error {
 
 	return nil //can be removed
 }
 
 type field struct {
-	w int
-	h int
+	w       int
+	h       int
 	objects []Figure
 }
 
@@ -53,7 +53,7 @@ func NewField() *field {
 		panic(err)
 	}
 
-	f:=new(field)
+	f := new(field)
 	f.w, f.h = termbox.Size()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	return f
@@ -66,7 +66,7 @@ func (f *field) Close() {
 	termbox.Close()
 }
 func (f *field) Add(d Figure) {
-	f.objects=append(f.objects, d)
+	f.objects = append(f.objects, d)
 }
 func (f *field) Redraw() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
@@ -75,9 +75,9 @@ func (f *field) Redraw() {
 	}
 	termbox.Flush()
 }
-func (f *field) Intersect (x int, y int) Figure {
-	for i,_ := range f.objects {
-		j:= f.objects[i].Intersect(x, y)
+func (f *field) Intersect(x int, y int) Figure {
+	for i := range f.objects {
+		j := f.objects[i].Intersect(x, y)
 		if j != nil {
 			return j
 		}
@@ -85,12 +85,12 @@ func (f *field) Intersect (x int, y int) Figure {
 	return nil
 }
 
-func (f *field) Remove (x int, y int) error {
-	for i,_ := range f.objects {
+func (f *field) Remove(x int, y int) error {
+	for i := range f.objects {
 		if f.objects[i].Intersect(x, y) != nil {
-			err:= f.objects[i].Remove(x, y)
+			err := f.objects[i].Remove(x, y)
 			if err == nil {
-				f.objects=append(f.objects[:i],f.objects[i+1:]...)
+				f.objects = append(f.objects[:i], f.objects[i+1:]...)
 				return nil
 			} else {
 				return err
@@ -101,127 +101,132 @@ func (f *field) Remove (x int, y int) error {
 }
 
 type snake struct {
-	d Direction
-	len int
+	d    Direction
+	len  int
 	body []*point
-	f *field
+	f    *field
 }
 type Direction int
-const (  // iota is reset to 0
-        UP Direction = iota  // c0 == 0
-        RIGHT Direction = iota  // c1 == 1
-        DOWN Direction = iota  // c2 == 2
-        LEFT Direction = iota
+
+const ( // iota is reset to 0
+	UP    Direction = iota // c0 == 0
+	RIGHT Direction = iota // c1 == 1
+	DOWN  Direction = iota // c2 == 2
+	LEFT  Direction = iota
 )
 
-func NewSnake (f *field, x int, y int) *snake {
-	s:=new(snake)
-	s.d=UP
-	s.len=10
-	s.f=f
-	s.body=append(s.body,NewPoint(x,y,'#'))
+func NewSnake(f *field, x int, y int) *snake {
+	s := new(snake)
+	s.d = UP
+	s.len = 10
+	s.f = f
+	s.body = append(s.body, NewPoint(x, y, '#'))
 	return s
 }
 func (s *snake) Grow(dir Direction) string {
 	if dir == (s.d+2)%4 {
-		dir=s.d
+		dir = s.d
 	}
-	lastx:=s.body[len(s.body)-1].x
-	lasty:=s.body[len(s.body)-1].y
+	lastx := s.body[len(s.body)-1].x
+	lasty := s.body[len(s.body)-1].y
 	var newx, newy int
 	switch dir {
-		case 0:
-			newx=lastx
-			newy=lasty-1
+	case 0:
+		newx = lastx
+		newy = lasty - 1
 
-		case 1:
-			newx=lastx+1
-			newy=lasty
+	case 1:
+		newx = lastx + 1
+		newy = lasty
 
-		case 2:
-			newx=lastx
-			newy=lasty+1
+	case 2:
+		newx = lastx
+		newy = lasty + 1
 
-		case 3:
-			newx=lastx-1
-			newy=lasty
+	case 3:
+		newx = lastx - 1
+		newy = lasty
 
 	}
-	if s.f.Intersect(newx,newy) != nil {
-			 if  s.f.Remove(newx,newy) !=nil {
-			 		return "gameover"
-			 	} else {
-			 		s.len+=1
-			 		return "ate"
-			 	}
-			}
-			s.body=append(s.body, NewPoint(newx,newy, '#'))
-	s.d=dir
+	if s.f.Intersect(newx, newy) != nil {
+		if s.f.Remove(newx, newy) != nil {
+			return "gameover"
+		} else {
+			s.len += 1
+			return "ate"
+		}
+	}
+	s.body = append(s.body, NewPoint(newx, newy, '#'))
+	s.d = dir
 	if len(s.body) > s.len {
-		s.body=s.body[1:]
+		s.body = s.body[1:]
 	}
 	return ""
 }
 
-func (s *snake) Draw (x0 int, y0 int, w int, h int) {
-	for _,i := range s.body {
+func (s *snake) Draw(x0 int, y0 int, w int, h int) {
+	for _, i := range s.body {
 		i.Draw(x0, y0, w, h)
 	}
 }
 
-func (s *snake) Intersect (x int, y int) Figure {
-	for i,_ := range s.body {
-		j:= s.body[i].Intersect(x, y)
-		if j != nil{
+func (s *snake) Intersect(x int, y int) Figure {
+	for i := range s.body {
+		j := s.body[i].Intersect(x, y)
+		if j != nil {
 			return j
 		}
 	}
 	return nil
 }
 
-func (s *snake) Remove (x int, y int) error {
+func (s *snake) Remove(x int, y int) error {
 
 	return errors.New("will not remove snake")
 }
 
-func (s *snake) parseKeyboard(dir *Direction){
-		for {
-			//l.Println("j cycle")
-			ev := termbox.PollEvent()
-					if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowUp && s.d != DOWN {
-						*dir = UP
-					}
-					if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowRight && s.d != LEFT {
-						*dir = RIGHT
-					}
-					if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowDown && s.d != UP {
-						*dir = DOWN
-					}
-					if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowLeft && s.d != RIGHT {
-						*dir = LEFT
-					}
-				//l.Println("select")
-				//time.Sleep(10 * time.Millisecond)
+func (s *snake) parseKeyboard(dir *Direction) {
+	for {
+		//l.Println("j cycle")
+		ev := termbox.PollEvent()
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowUp && s.d != DOWN {
+			*dir = UP
 		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowRight && s.d != LEFT {
+			*dir = RIGHT
+		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowDown && s.d != UP {
+			*dir = DOWN
+		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyArrowLeft && s.d != RIGHT {
+			*dir = LEFT
+		}
+		//l.Println("select")
+		//time.Sleep(10 * time.Millisecond)
+	}
 }
 
 type wall struct {
 	body []*point
 }
 
-func NewWall(x0 int,y0 int,x1 int,y1 int) *wall {
-	w:=new(wall)
-	if x0==x1 {
-		if y1<y0 { y1,y0=y0,y1 }
-		for i:=y0;i<=y1 ; i++ {
-			w.body = append(w.body,NewPoint(x0,i, 'O'))
+func NewWall(x0 int, y0 int, x1 int, y1 int) *wall {
+	w := new(wall)
+	if x0 == x1 {
+		if y1 < y0 {
+			y1, y0 = y0, y1
+		}
+		for i := y0; i <= y1; i++ {
+			w.body = append(w.body, NewPoint(x0, i, 'O'))
 		}
 		return w
 	}
-	if y0==y1 {
-		if x1<x0 {x1,x0=x0,x1}
-		for i:=x0; i<=x1 ; i++ {
-			w.body=append(w.body,NewPoint(i,y0,'O'))
+	if y0 == y1 {
+		if x1 < x0 {
+			x1, x0 = x0, x1
+		}
+		for i := x0; i <= x1; i++ {
+			w.body = append(w.body, NewPoint(i, y0, 'O'))
 		}
 		return w
 	}
@@ -229,20 +234,20 @@ func NewWall(x0 int,y0 int,x1 int,y1 int) *wall {
 	return nil
 }
 func (wa *wall) Draw(x0 int, y0 int, w int, h int) {
-	for _,i := range wa.body {
+	for _, i := range wa.body {
 		i.Draw(x0, y0, w, h)
 	}
 }
-func (w *wall) Intersect (x int, y int) Figure {
-	for i,_ := range w.body {
-		j:= w.body[i].Intersect(x, y) 
-		if j != nil{
+func (w *wall) Intersect(x int, y int) Figure {
+	for i := range w.body {
+		j := w.body[i].Intersect(x, y)
+		if j != nil {
 			return j
 		}
 	}
 	return nil
 }
-func (w *wall) Remove (x int, y int) error {
+func (w *wall) Remove(x int, y int) error {
 
 	return errors.New("will not remove wall")
 }
